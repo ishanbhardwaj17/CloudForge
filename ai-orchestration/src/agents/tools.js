@@ -1,20 +1,24 @@
 import axios from "axios";
+import { write } from "fs";
 import { tool } from "langchain";
 import * as z from "zod";
 
 export const listFiles = tool(
-  async ({}) => {
-    console.log("=================================");
-    console.log("using list files tool");
-    console.log("=================================");
+  async ({}, config) => {
+    const writer = config.writer;
+
+    writer("Listing files in project directory...\n");
 
     const response = await axios.get(
-      "http://sandbox-service-019ed169-2074-732d-bb96-fefe1a09ae91:3000/list-files",
+      `http://sandbox-service-${config.context.projectId}:3000/list-files`
     );
 
-    console.log("=================================");
-    console.log("response from list files tool", response.data);
-    console.log("=================================");
+    writer(
+      "Files listed successfully. " +
+        "Files: " +
+        response.data.files.join(",") +
+        "\n"
+    );
 
     return JSON.stringify(response.data.files);
   },
@@ -23,23 +27,22 @@ export const listFiles = tool(
     description:
       "List all the files in the project directory. This is useful for understanding what files are available to work with.",
     schema: z.object({}),
-  },
+  }
 );
 
 export const readFiles = tool(
-  async ({ files: [] }) => {
-    console.log("=================================");
-    console.log("using read files tool with files", files);
-    console.log("=================================");
+  async ({ files = [] }, config) => {
+    const writer = config.writer;
+
+    writer("Reading files..." + files.join(",") + "\n");
 
     const response = await axios.get(
-      "http://sandbox-service-019ed169-2074-732d-bb96-fefe1a09ae91:3000/read-files?files=" +
-        files.join(","),
+      `http://sandbox-service-${config.context.projectId}:3000/read-files?files=` +
+        files.join(",")
     );
 
-    console.log("=================================");
-    console.log("response from read files tool", response.data);
-    console.log("=================================");
+    writer("Files read successfully.\n");
+
     return JSON.stringify(response.data);
   },
   {
@@ -50,27 +53,30 @@ export const readFiles = tool(
       files: z
         .array(z.string())
         .describe(
-          "The list of files absolute paths to read. These should be files that were listed using the list_files tool or created later",
+          "The list of files absolute paths to read. These should be files that were listed using the list_files tool or created later"
         ),
     }),
-  },
+  }
 );
 
 export const updateFiles = tool(
-  async ({ files }) => {
-    console.log("=================================");
-    console.log("using update files tool with files", files);
-    console.log("=================================");
+  async ({ files }, config) => {
+    const writer = config.writer;
+
+    writer(
+      "Updating files..." +
+        files.map((f) => f.file).join(",") +
+        "\n"
+    );
 
     const response = await axios.patch(
-      "http://sandbox-service-019ed169-2074-732d-bb96-fefe1a09ae91:3000/update-files",
+      `http://sandbox-service-${config.context.projectId}:3000/update-files`,
       {
         updates: files,
-      },
+      }
     );
-    console.log("=================================");
-    console.log("response from update files tool", response.data);
-    console.log("=================================");
+
+    writer("Files updated successfully.\n");
 
     return JSON.stringify(response.data.results);
   },
@@ -82,17 +88,15 @@ export const updateFiles = tool(
       files: z
         .array(
           z.object({
-            file: z
-              .string()
-              .describe("The absolute path of the file to update"),
+            file: z.string().describe("The absolute path of the file to update"),
             content: z
               .string()
               .describe(
-                "The new content for the file, the content should support json format.",
+                "The new content for the file, the content should support json format."
               ),
-          }),
+          })
         )
         .describe("The list of files to update and their new contents"),
     }),
-  },
+  }
 );
