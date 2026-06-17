@@ -2,8 +2,10 @@ import express from "express";
 import morgan from "morgan";
 import { createProxyMiddleware } from "http-proxy-middleware";
 import http from "http";
+import { createProxyServer } from "httpxy";
 
 const app = express();
+
 app.use(morgan("combined"));
 
 app.get("/api/status/healthz", (req, res) => {
@@ -18,65 +20,108 @@ const proxies = {};
 const agentProxies = {};
 
 function getProxy(sandboxId) {
-  const target = `http://sandbox-service-${sandboxId}`; // Construct target URL based on sandboxId
+  const target = `http://sandbox-service-${sandboxId}`;
 
   if (!proxies[sandboxId]) {
     proxies[sandboxId] = createProxyMiddleware({
       target,
       changeOrigin: true,
-      ws: true,
     });
   }
+
   return proxies[sandboxId];
 }
 
 function getAgentProxy(sandboxId) {
-  const target = `http://sandbox-service-${sandboxId}:3000`; // Construct target URL based on sandboxId
+  const target = `http://sandbox-service-${sandboxId}:3000`;
 
   if (!agentProxies[sandboxId]) {
     agentProxies[sandboxId] = createProxyMiddleware({
       target,
       changeOrigin: true,
-      ws: true,
     });
   }
 
   return agentProxies[sandboxId];
 }
 
+// Single httpxy proxy server for all WebSocket upgrades
+const wsProxy = createProxyServer({
+  changeOrigin: true,
+});
+
+wsProxy.on("error", (err, req, socket) => {
+  console.error("WS proxy error:", err.message);
+  socket?.destroy();
+});
+
 app.use((req, res, next) => {
   const host = req.headers.host;
-  const sandboxId = host.split(".")[0]; // Extract sandboxId from subdomain
 
-  if (host.split(".")[1] === "agent") {
+  if (!host) {
+    return res.status(400).send("Missing Host header");
+  }
+
+  const sandboxId = host.split(".")[0];
+  const type = host.split(".")[1];
+
+  if (type === "agent") {
     return getAgentProxy(sandboxId)(req, res, next);
-  } else if (host.split(".")[1] === "preview") {
+  }
+
+  if (type === "preview") {
     return getProxy(sandboxId)(req, res, next);
   }
+
+  return next();
 });
 
 // Create the HTTP server explicitly
 const server = http.createServer(app);
 
-// ✅ Handle WebSocket upgrades — this is what was missing
 server.on("upgrade", (req, socket, head) => {
   const host = req.headers.host;
+
+  if (!host) {
+    socket.destroy();
+    return;
+  }
+
+  // Prevent EPIPE and connection-reset errors
+  socket.on("error", () => socket.destroy());
+
   const sandboxId = host.split(".")[0];
   const type = host.split(".")[1];
 
   console.log(
-    `WS upgrade request: ${host}, sandboxId: ${sandboxId}, type: ${type}`,
+    `WS upgrade request: ${host}, sandboxId: ${sandboxId}, type: ${type}`
   );
 
   if (type === "agent") {
-    const proxy = getAgentProxy(sandboxId);
-    proxy.upgrade(req, socket, head);
+    wsProxy
+      .ws(
+        req,
+        socket,
+        {
+          target: `http://sandbox-service-${sandboxId}:3000`,
+        },
+        head
+      )
+      .catch(() => socket.destroy());
   } else if (type === "preview") {
-    const proxy = getProxy(sandboxId);
-    proxy.upgrade(req, socket, head);
+    wsProxy
+      .ws(
+        req,
+        socket,
+        {
+          target: `http://sandbox-service-${sandboxId}`,
+        },
+        head
+      )
+      .catch(() => socket.destroy());
   } else {
     socket.destroy();
   }
 });
 
-export default server; // export server, not app
+export default server;

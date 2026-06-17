@@ -3,31 +3,38 @@ import morgan from "morgan";
 import fs from "fs";
 import path from "path";
 import { Server } from "socket.io";
-import http from 'http';
-import pty from 'node-pty';
-import os from 'os';
+import http from "http";
+import pty from "node-pty";
+import os from "os";
+import cors from "cors";
 
-const WORKING_DIR = process.platform === "win32" ? path.resolve("./workspace") : "/workspace";
+const WORKING_DIR =
+  process.platform === "win32" ? path.resolve("./workspace") : "/workspace";
 
 if (!fs.existsSync(WORKING_DIR)) {
-    fs.mkdirSync(WORKING_DIR, { recursive: true });
+  fs.mkdirSync(WORKING_DIR, { recursive: true });
 }
 
 const app = express();
 const httpServer = http.createServer(app);
 
 app.use(morgan("dev"));
+app.use(
+  cors({
+    methods: ["GET", "POST", "PATCH", "DELETE"],
+    origin: "*",
+  }),
+);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 const io = new Server(httpServer, {
-    cors: {
-        origin: "*",
-        methods: [ "GET", "POST", "PATCH" ],
-    }
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST", "PATCH"],
+  },
 });
-
 
 app.get("/", (req, res) => {
   res.status(200).json({
@@ -36,37 +43,38 @@ app.get("/", (req, res) => {
   });
 });
 
-const shell = process.env.SHELL || (process.platform === 'win32' ? (process.env.COMSPEC || 'cmd.exe') : 'bash');
+const shell =
+  process.env.SHELL ||
+  (process.platform === "win32" ? process.env.COMSPEC || "cmd.exe" : "bash");
 
 // Spawn the PTY process
 const ptyProcess = pty.spawn(shell, [], {
-    name: 'xterm-color',
-    cols: 80,
-    rows: 30,
-    cwd: WORKING_DIR,
-    env: process.env
+  name: "xterm-color",
+  cols: 80,
+  rows: 30,
+  cwd: WORKING_DIR,
+  env: process.env,
 });
 
-
 ptyProcess.onData((data) => {
-    io.emit('terminal-output', data);
+  io.emit("terminal-output", data);
 });
 
 ptyProcess.onExit(({ exitCode, signal }) => {
-    console.log(`PTY process exited with code: ${exitCode}, signal: ${signal}`);
+  console.log(`PTY process exited with code: ${exitCode}, signal: ${signal}`);
 });
 
 io.on("connection", (socket) => {
-    console.log("Client connected: " + socket.id);
+  console.log("Client connected: " + socket.id);
 
-    socket.on("terminal-input", (data) => {
-        ptyProcess.write(data);
-    });
+  socket.on("terminal-input", (data) => {
+    ptyProcess.write(data);
+  });
 
-    socket.on("disconnect", () => {
-        console.log("Client disconnected: " + socket.id);
-    });
-})
+  socket.on("disconnect", () => {
+    console.log("Client disconnected: " + socket.id);
+  });
+});
 
 /**
  * @route GET /list-files

@@ -9,11 +9,12 @@ export default function Terminal({ sandboxId }) {
   const termRef = useRef(null);
   const fitAddonRef = useRef(null);
   const socketRef = useRef(null);
+  const reconnectFailedHandlerRef = useRef(null);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState(null);
 
   const initTerminal = useCallback(() => {
-    if (!containerRef.current || termRef.current) return;
+    if (!containerRef.current || termRef.current) return null;
 
     const term = new XTerm({
       theme: {
@@ -58,13 +59,11 @@ export default function Terminal({ sandboxId }) {
     termRef.current = term;
     fitAddonRef.current = fitAddon;
 
-    term.writeln("\x1b[36m╔══════════════════════════════════════╗\x1b[0m");
-    term.writeln(
-      "\x1b[36m║   \x1b[1mSandbox Terminal\x1b[0m\x1b[36m                  ║\x1b[0m",
-    );
-    term.writeln("\x1b[36m╚══════════════════════════════════════╝\x1b[0m");
+    term.writeln("======================================");
+    term.writeln("Sandbox Terminal");
+    term.writeln("======================================");
     term.writeln("");
-    term.writeln("\x1b[33mConnecting to sandbox...\x1b[0m");
+    term.writeln("Connecting to sandbox...");
 
     return term;
   }, []);
@@ -73,13 +72,14 @@ export default function Terminal({ sandboxId }) {
     (term) => {
       if (!sandboxId || !term) return;
 
-      const agentHost = `http://${sandboxId}.agent.localhost`;
+      const agentHost = `${window.location.protocol}//${sandboxId}.agent.localhost`;
 
       try {
         const socket = io(agentHost, {
-          transports: ["websocket", "polling"],
+          transports: ["polling", "websocket"],
           reconnectionAttempts: 5,
           reconnectionDelay: 1000,
+          timeout: 15000,
         });
 
         socketRef.current = socket;
@@ -87,19 +87,23 @@ export default function Terminal({ sandboxId }) {
         socket.on("connect", () => {
           setConnected(true);
           setError(null);
-          term.writeln("\x1b[32m✓ Connected to sandbox shell\x1b[0m");
+          term.writeln("[ok] Connected to sandbox shell");
           term.writeln("");
         });
 
         socket.on("disconnect", () => {
           setConnected(false);
-          term.writeln("\r\n\x1b[33m⚠ Disconnected. Reconnecting...\x1b[0m");
+          term.writeln("\r\n[warn] Disconnected. Reconnecting...");
         });
 
         socket.on("connect_error", (err) => {
           setConnected(false);
-          setError("Connection failed");
-          term.writeln(`\r\n\x1b[31m✗ Connection error: ${err.message}\x1b[0m`);
+
+          // Socket.IO can recover by falling back from websocket to polling.
+          if (!socket.active) {
+            setError("Connection failed");
+            term.writeln(`\r\n[error] Connection error: ${err.message}`);
+          }
         });
 
         socket.on("terminal-output", (data) => {
@@ -109,6 +113,14 @@ export default function Terminal({ sandboxId }) {
         term.onData((data) => {
           socket.emit("terminal-input", data);
         });
+
+        reconnectFailedHandlerRef.current = () => {
+          setConnected(false);
+          setError("Failed to reconnect");
+          term.writeln("\r\n[error] Failed to reconnect to sandbox shell");
+        };
+
+        socket.io.on("reconnect_failed", reconnectFailedHandlerRef.current);
       } catch (err) {
         setError(err.message);
       }
@@ -122,6 +134,13 @@ export default function Terminal({ sandboxId }) {
 
     return () => {
       if (socketRef.current) {
+        if (reconnectFailedHandlerRef.current) {
+          socketRef.current.io.off(
+            "reconnect_failed",
+            reconnectFailedHandlerRef.current,
+          );
+          reconnectFailedHandlerRef.current = null;
+        }
         socketRef.current.disconnect();
         socketRef.current = null;
       }
@@ -132,7 +151,6 @@ export default function Terminal({ sandboxId }) {
     };
   }, [initTerminal, connectSocket]);
 
-  // Handle resize
   useEffect(() => {
     const observer = new ResizeObserver(() => {
       if (fitAddonRef.current) {
@@ -141,13 +159,13 @@ export default function Terminal({ sandboxId }) {
         } catch (_) {}
       }
     });
+
     if (containerRef.current) observer.observe(containerRef.current);
     return () => observer.disconnect();
   }, []);
 
   return (
     <div className="flex flex-col h-full" style={{ background: "#070b14" }}>
-      {/* Terminal toolbar */}
       <div
         className="flex items-center justify-between px-3 shrink-0"
         style={{
@@ -193,7 +211,6 @@ export default function Terminal({ sandboxId }) {
         </div>
       </div>
 
-      {/* xterm container */}
       <div ref={containerRef} className="flex-1 overflow-hidden" />
     </div>
   );

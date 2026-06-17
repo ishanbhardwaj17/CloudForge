@@ -1,11 +1,11 @@
 import axios from "axios";
-import { write } from "fs";
+// import { write } from "fs";
 import { tool } from "langchain";
 import * as z from "zod";
 
 export const listFiles = tool(
   async ({}, config) => {
-    const writer = config.writer;
+    const writer = config.context?.writer ?? (() => {});
 
     writer("Listing files in project directory...\n");
 
@@ -32,7 +32,7 @@ export const listFiles = tool(
 
 export const readFiles = tool(
   async ({ files = [] }, config) => {
-    const writer = config.writer;
+     const writer = config.context?.writer ?? (() => {});
 
     writer("Reading files..." + files.join(",") + "\n");
 
@@ -61,7 +61,7 @@ export const readFiles = tool(
 
 export const updateFiles = tool(
   async ({ files }, config) => {
-    const writer = config.writer;
+     const writer = config.context?.writer ?? (() => {});
 
     writer(
       "Updating files..." +

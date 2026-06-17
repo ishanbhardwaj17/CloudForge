@@ -43,7 +43,6 @@ function TreeNode({
   name,
   node,
   depth,
-  agentBase,
   activeFile,
   onFileSelect,
   path,
@@ -97,7 +96,6 @@ function TreeNode({
                   name={childName}
                   node={childNode}
                   depth={depth + 1}
-                  agentBase={agentBase}
                   activeFile={activeFile}
                   onFileSelect={onFileSelect}
                   path={fullPath}
@@ -140,7 +138,7 @@ function TreeNode({
 }
 
 export default function FileExplorer({
-  agentBase,
+  sandboxId,
   activeFile,
   onFileSelect,
   refreshKey,
@@ -150,24 +148,46 @@ export default function FileExplorer({
   const [error, setError] = useState(null);
   const [tree, setTree] = useState({});
 
-  const fetchFiles = useCallback(async () => {
-    if (!agentBase) return;
+  const fetchFiles = useCallback(() => {
+    if (!sandboxId) return;
     setLoading(true);
     setError(null);
-    try {
-      const res = await fetch(`${agentBase}/list-files`);
-      const data = await res.json();
-      setFiles(data.files || []);
-      setTree(buildTree(data.files || []));
-    } catch (err) {
-      setError("Failed to load files");
-    } finally {
-      setLoading(false);
-    }
-  }, [agentBase]);
+
+    const maxRetries = 40;
+    const retryDelay = 1500;
+    let cancelled = false;
+
+    const attemptFetch = async (retriesLeft) => {
+      try {
+        const res = await fetch(`/api/sandbox/${sandboxId}/files`);
+        if (!res.ok) throw new Error(`Status ${res.status}`);
+        const data = await res.json();
+        if (cancelled) return;
+        setFiles(data.files || []);
+        setTree(buildTree(data.files || []));
+        setError(null);
+        setLoading(false);
+      } catch (err) {
+        if (cancelled) return;
+        if (retriesLeft > 0) {
+          setTimeout(() => attemptFetch(retriesLeft - 1), retryDelay);
+        } else {
+          setError("Failed to load files");
+          setLoading(false);
+        }
+      }
+    };
+
+    attemptFetch(maxRetries);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sandboxId]);
 
   useEffect(() => {
-    fetchFiles();
+    const cleanup = fetchFiles();
+    return () => cleanup?.();
   }, [fetchFiles, refreshKey]);
 
   return (
@@ -239,7 +259,6 @@ export default function FileExplorer({
                 name={name}
                 node={node}
                 depth={0}
-                agentBase={agentBase}
                 activeFile={activeFile}
                 onFileSelect={onFileSelect}
                 path=""

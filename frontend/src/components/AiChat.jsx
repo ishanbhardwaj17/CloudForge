@@ -182,7 +182,10 @@ export default function AiChat({ sandboxId, onFilesChanged }) {
 
       if (!response.ok) throw new Error(`Server error: ${response.status}`);
 
-      const reader = response.body.getReader();
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error("Streaming response not available");
+      }
       const decoder = new TextDecoder();
       let buffer = "";
 
@@ -206,17 +209,24 @@ export default function AiChat({ sandboxId, onFilesChanged }) {
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop();
+        const events = buffer.split("\n\n");
+        buffer = events.pop() || "";
 
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          const parsed = parseActivityLine(line);
+        for (const eventChunk of events) {
+          const dataLines = eventChunk
+            .split("\n")
+            .filter((line) => line.startsWith("data:"))
+            .map((line) => line.slice(5).trimStart());
+
+          const textChunk = dataLines.join("\n").trim();
+          if (!textChunk) continue;
+
+          const parsed = parseActivityLine(textChunk);
           if (parsed) {
             activityLines = [...activityLines, parsed];
             // If looks like final AI text response
-            if (parsed.type === "info" && line.length > 30) {
-              aiContent = line;
+            if (parsed.type === "info" && textChunk.length > 30) {
+              aiContent = textChunk;
             }
           }
           updateMsg();

@@ -20,21 +20,24 @@ function getLanguage(filename) {
   return LANGUAGE_MAP[ext] || "plaintext";
 }
 
-export default function FileViewer({ agentBase, filePath }) {
+export default function FileViewer({ sandboxId, filePath }) {
   const [content, setContent] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!agentBase || !filePath) return;
+    if (!sandboxId || !filePath) return;
     const fetchFile = async () => {
       setLoading(true);
       setError(null);
       setContent(null);
       try {
         const res = await fetch(
-          `${agentBase}/read-files?files=${encodeURIComponent(filePath)}`,
+          `/api/sandbox/${sandboxId}/files/content?file=${encodeURIComponent(filePath)}`,
         );
+        if (!res.ok) {
+          throw new Error(`Status ${res.status}`);
+        }
         const data = await res.json();
         const fileData = data.files?.[0];
         if (fileData) {
@@ -50,7 +53,7 @@ export default function FileViewer({ agentBase, filePath }) {
       }
     };
     fetchFile();
-  }, [agentBase, filePath]);
+  }, [sandboxId, filePath]);
 
   if (!filePath) {
     return (

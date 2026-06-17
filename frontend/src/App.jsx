@@ -9,7 +9,7 @@ import AiChat from "./components/AiChat";
 
 export default function App() {
   // Sandbox state
-  const [sandbox, setSandbox] = useState(null); // { sandboxId, previewUrl, agentBase }
+  const [sandbox, setSandbox] = useState(null); // { sandboxId, previewUrl }
   const [status, setStatus] = useState("ready");
 
   // UI state
@@ -24,11 +24,9 @@ export default function App() {
   const dragStartH = useRef(0);
 
   const handleSandboxCreated = useCallback((data) => {
-    const agentBase = `http://${data.sandboxId}.agent.localhost`;
     setSandbox({
       sandboxId: data.sandboxId,
       previewUrl: data.previewUrl,
-      agentBase,
     });
     setStatus("ready");
   }, []);
@@ -68,7 +66,7 @@ export default function App() {
     return <SplashScreen onSandboxCreated={handleSandboxCreated} />;
   }
 
-  const { sandboxId, previewUrl, agentBase } = sandbox;
+  const { sandboxId, previewUrl } = sandbox;
 
   return (
     <div
@@ -87,7 +85,7 @@ export default function App() {
       <div className="flex flex-1 overflow-hidden">
         {/* File Explorer sidebar */}
         <FileExplorer
-          agentBase={agentBase}
+          sandboxId={sandboxId}
           activeFile={activeFile}
           onFileSelect={handleFileSelect}
           refreshKey={fileRefreshKey}
@@ -100,7 +98,7 @@ export default function App() {
             {activeTab === "preview" ? (
               <PreviewFrame previewUrl={previewUrl} />
             ) : (
-              <FileViewer agentBase={agentBase} filePath={activeFile} />
+              <FileViewer sandboxId={sandboxId} filePath={activeFile} />
             )}
           </div>
 
