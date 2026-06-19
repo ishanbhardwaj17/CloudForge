@@ -5,13 +5,11 @@ export const createService = async (sandboxId) => {
     metadata: {
       name: `sandbox-service-${sandboxId}`,
       labels: {
-        
         sandboxId: sandboxId,
       },
     },
     spec: {
       selector: {
-       
         sandboxId: sandboxId,
       },
       ports: [
@@ -25,7 +23,7 @@ export const createService = async (sandboxId) => {
           name: "agent-http",
           port: 3000,
           targetPort: 3000,
-          protocol: "TCP"
+          protocol: "TCP",
         },
       ],
       type: "ClusterIP",
@@ -38,4 +36,11 @@ export const createService = async (sandboxId) => {
   });
 
   return response;
+};
+
+export const deleteService = async (sandboxId) => {
+  return await k8sCoreV1Api.deleteNamespacedService({
+    name: `sandbox-service-${sandboxId}`,
+    namespace: "default",
+  });
 };
