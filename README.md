@@ -86,11 +86,9 @@ If this project is useful, consider giving it a star and using it as the foundat
 
 ## Demo / Screenshots
 
-Replace these placeholders with real product media once available.
-
 ### Product Walkthrough
 
-https://github.com/ishanbhardwaj17/CloudForge/blob/main/mainvid2.mp4
+![CloudForge Demo](./mainvid2%20(1).gif)
 
 ### Screenshots
 
