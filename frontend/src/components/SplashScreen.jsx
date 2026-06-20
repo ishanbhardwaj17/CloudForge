@@ -187,7 +187,7 @@ export default function SplashScreen({ onSandboxCreated }) {
               backgroundClip: "text",
             }}
           >
-            Sandbox IDE
+            CloudForge
           </h1>
           <p className="text-lg" style={{ color: "#64748b" }}>
             Spin up an isolated coding environment in seconds

@@ -1,4 +1,4 @@
-# Sandbox IDE
+# CloudForge
 
 <p align="center">
   <strong>AI-powered isolated coding environments in seconds.</strong><br />
@@ -24,13 +24,13 @@
   <a href="#contributing"><strong>Contribute</strong></a>
 </p>
 
-> Sandbox IDE is a microservice-based cloud development platform that creates ephemeral coding environments on demand, routes traffic to isolated previews, exposes live terminal and file APIs, and layers an AI assistant on top to help users build faster.
+> CloudForge is a microservice-based cloud development platform that creates ephemeral coding environments on demand, routes traffic to isolated previews, exposes live terminal and file APIs, and layers an AI assistant on top to help users build faster.
 
-## Why Sandbox IDE?
+## Why CloudForge?
 
 Modern developer tools should be instant, safe, collaborative, and programmable.
 
-Sandbox IDE is built around that idea:
+CloudForge is built around that idea:
 
 - create a fresh coding environment on demand
 - isolate each workspace from the rest of the system
@@ -91,7 +91,7 @@ Replace these placeholders with real product media once available.
 ### Product Walkthrough
 
 ```md
-![Sandbox IDE Demo](./docs/demo.gif)
+![CloudForge Demo](./docs/demo.gif)
 ```
 
 ### Screenshots
@@ -176,7 +176,7 @@ http://localhost:5173
 
 ## How It Works
 
-Sandbox IDE uses a microservice architecture with dynamic sandbox provisioning.
+CloudForge uses a microservice architecture with dynamic sandbox provisioning.
 
 ### High-Level Flow
 
@@ -296,7 +296,7 @@ Base path:
 ## Project Structure
 
 ```text
-Sandbox IDE/
+CloudForge/
 ├── frontend/                # React web application
 ├── auth/                    # Authentication service (Google OAuth + JWT)
 ├── ai-orchestration/        # AI service for file-aware coding workflows
@@ -474,7 +474,7 @@ Built for developers who want the speed of local development with the safety and
 ---
 
 <p align="center">
-  <strong>Sandbox IDE</strong><br />
+  <strong>CloudForge</strong><br />
   Build faster. Isolate safely. Let AI do more of the heavy lifting.
 </p>
 

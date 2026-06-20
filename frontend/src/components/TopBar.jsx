@@ -37,7 +37,7 @@ export default function TopBar({ sandboxId, activeTab, onTabChange, status }) {
             </svg>
           </div>
           <span className="text-sm font-semibold" style={{ color: "#e2e8f0" }}>
-            Sandbox IDE
+            CloudForge
           </span>
         </div>
 

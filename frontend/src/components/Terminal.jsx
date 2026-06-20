@@ -60,7 +60,7 @@ export default function Terminal({ sandboxId }) {
     fitAddonRef.current = fitAddon;
 
     term.writeln("======================================");
-    term.writeln("Sandbox Terminal");
+    term.writeln("CloudForge Terminal");
     term.writeln("======================================");
     term.writeln("");
     term.writeln("Connecting to sandbox...");
