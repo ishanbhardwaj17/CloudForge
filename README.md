@@ -90,17 +90,13 @@ Replace these placeholders with real product media once available.
 
 ### Product Walkthrough
 
-```md
-![CloudForge Demo](./docs/demo.gif)
-```
+https://github.com/ishanbhardwaj17/CloudForge/blob/main/mainvid2.mp4
 
 ### Screenshots
 
-```md
-![Landing Screen](./docs/screenshots/landing.png)
-![Sandbox Workspace](./docs/screenshots/workspace.png)
-![AI Assistant](./docs/screenshots/ai-assistant.png)
-```
+![Landing Screen](./landing.png)
+
+![Workspace](./workingpage.png)
 
 ### Suggested Demo Flow
 
