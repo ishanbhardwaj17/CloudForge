@@ -13,13 +13,57 @@ export default function SplashScreen({ onSandboxCreated }) {
     return () => clearInterval(interval);
   }, [loading]);
 
+  const waitForSandboxReady = async (sandboxId) => {
+    const maxAttempts = 30;
+    const retryDelayMs = 1500;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      let res;
+      let data;
+
+      try {
+        res = await fetch(`/api/sandbox/${sandboxId}/status`, {
+          credentials: "include",
+        });
+        data = await res.json().catch(() => null);
+      } catch {
+        data = null;
+      }
+
+      if (res?.ok && data?.ready) {
+        return data;
+      }
+
+      await new Promise((resolve) => {
+        window.setTimeout(resolve, retryDelayMs);
+      });
+    }
+
+    throw new Error("Sandbox took too long to become ready");
+  };
+
   const handleCreate = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/sandbox/start", { method: "POST" });
-      if (!res.ok) throw new Error(`Server responded with ${res.status}`);
-      const data = await res.json();
+      const res = await fetch("/api/sandbox/start", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          title: "Untitled Project",
+        }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(data?.message || `Server responded with ${res.status}`);
+      }
+
+      await waitForSandboxReady(data.sandboxId);
       onSandboxCreated(data);
     } catch (err) {
       setError(err.message || "Failed to create sandbox");
