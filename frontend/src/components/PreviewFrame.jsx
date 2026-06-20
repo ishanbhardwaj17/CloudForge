@@ -1,9 +1,14 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-export default function PreviewFrame({ previewUrl }) {
+export default function PreviewFrame({ previewUrl, refreshSeed = 0 }) {
   const iframeRef = useRef(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    setRefreshKey((k) => k + 1);
+  }, [refreshSeed]);
 
   const handleRefresh = () => {
     setLoading(true);

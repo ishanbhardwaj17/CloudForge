@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import SplashScreen from "./components/SplashScreen";
 import TopBar from "./components/TopBar";
 import FileExplorer from "./components/FileExplorer";
@@ -16,6 +16,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("preview"); // 'preview' | 'files'
   const [activeFile, setActiveFile] = useState(null);
   const [fileRefreshKey, setFileRefreshKey] = useState(0);
+  const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
 
   // Terminal resize
   const [terminalHeight, setTerminalHeight] = useState(220);
@@ -28,7 +29,7 @@ export default function App() {
       sandboxId: data.sandboxId,
       previewUrl: data.previewUrl,
     });
-    setStatus("ready");
+    setStatus("loading");
   }, []);
 
   const handleFilesChanged = useCallback(() => {
@@ -61,12 +62,62 @@ export default function App() {
     document.addEventListener("mouseup", onUp);
   };
 
+  const sandboxId = sandbox?.sandboxId;
+  const previewUrl = sandbox?.previewUrl;
+
+  useEffect(() => {
+    if (!sandboxId) {
+      return;
+    }
+
+    let cancelled = false;
+    let timeoutId;
+
+    const pollStatus = async () => {
+      try {
+        const res = await fetch(`/api/sandbox/${sandboxId}/status`, {
+          credentials: "include",
+        });
+        const data = await res.json().catch(() => null);
+
+        if (cancelled) {
+          return;
+        }
+
+        if (res.ok && data?.ready) {
+          setStatus("ready");
+          setPreviewRefreshKey((key) => key + 1);
+          setFileRefreshKey((key) => key + 1);
+          return;
+        }
+
+        setStatus("loading");
+      } catch {
+        if (!cancelled) {
+          setStatus("loading");
+        }
+      }
+
+      if (!cancelled) {
+        timeoutId = window.setTimeout(pollStatus, 1500);
+      }
+    };
+
+    setStatus("loading");
+    pollStatus();
+
+    return () => {
+      cancelled = true;
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [sandboxId]);
+
   // Landing / splash
   if (!sandbox) {
     return <SplashScreen onSandboxCreated={handleSandboxCreated} />;
   }
-
-  const { sandboxId, previewUrl } = sandbox;
 
   return (
     <div
@@ -96,7 +147,10 @@ export default function App() {
           {/* Main content area */}
           <div className="flex-1 overflow-hidden">
             {activeTab === "preview" ? (
-              <PreviewFrame previewUrl={previewUrl} />
+              <PreviewFrame
+                previewUrl={previewUrl}
+                refreshSeed={previewRefreshKey}
+              />
             ) : (
               <FileViewer sandboxId={sandboxId} filePath={activeFile} />
             )}
